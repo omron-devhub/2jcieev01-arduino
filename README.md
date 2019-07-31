@@ -9,7 +9,7 @@ prototype your ideas with variety environmental information.
 Arduino sample projects for acquiring data from sensors on 2JCIE-EV01.
 there samples output the sensor data to USB-Serial ports.
 
-| example | description                     | baord |
+| example | description                     | board |
 |:-------:|:--------------------------------|:-----------------------|
 | baro-ar | The Barometer sensor sample     | Arduino MKR-WiFi1010   |
 | baro-ft | The Barometer sensor sample     | Adafruit Feather ESP32 |
