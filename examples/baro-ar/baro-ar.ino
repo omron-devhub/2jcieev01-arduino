@@ -94,13 +94,13 @@ bool baro_2smpb02e_setup(void) {
                            BARO_2SMPB02E_REGI2C_CHIP_ID, rbuf, 1);
     if (result || rbuf[0] != BARO_2SMPB02E_CHIP_ID) {
         baro_halt("cannot find 2SMPB-02E sensor, halted...");
-    }
- 
+    } 
+        
     rbuf[0] = BARO_2SMPB02E_VAL_IOSETUP_STANDBY_0125MS; 
     i2c_write_reg8(BARO_2SMPB02E_ADDRESS, BARO_2SMPB02E_REGI2C_IO_SETUP,
                    rbuf, sizeof(rbuf));
-
-    rbuf[0] = BARO_2SMPB02E_VAL_IIR_32TIMES;
+    
+        rbuf[0] = BARO_2SMPB02E_VAL_IIR_32TIMES;
     i2c_write_reg8(BARO_2SMPB02E_ADDRESS, BARO_2SMPB02E_REGI2C_IIR,
                    rbuf, sizeof(rbuf));
                    
@@ -110,7 +110,6 @@ bool baro_2smpb02e_setup(void) {
     if (result) {
         baro_halt("failed to read 2SMPB-02E coeffients, halted...");
     }
-
     // pressure parameters
     ex = (rbuf[24] & 0xf0) >> 4;
     baro_2smpb02e_setting._B00 = baro_2smpb02e_conv20q4_dbl(rbuf, ex, 0);
@@ -130,7 +129,6 @@ bool baro_2smpb02e_setup(void) {
             BARO_2SMPB02E_COEFF_A_B21, BARO_2SMPB02E_COEFF_S_B21, rbuf, 14);
     baro_2smpb02e_setting._BP3 = baro_2smpb02e_conv16_dbl(
             BARO_2SMPB02E_COEFF_A_BP3, BARO_2SMPB02E_COEFF_S_BP3, rbuf, 16);
-
     // temperature parameters
     ex = (rbuf[24] & 0x0f);
     baro_2smpb02e_setting._A0 = baro_2smpb02e_conv20q4_dbl(rbuf, ex, 18);
@@ -259,7 +257,6 @@ void setup() {
     digitalWrite(GPIO_LED_R_PIN, LOW);
     digitalWrite(GPIO_LED_G_PIN, LOW);
     digitalWrite(GPIO_LED_B_PIN, LOW);
-
     Serial.println("peripherals: I2C");
     Wire.begin();  // master
     Serial.println("sensor: barometer");
@@ -280,16 +277,12 @@ void loop() {
 
     // 3. Set Averaging times and Power mode
     uint8_t power_mode = BARO_2SMPB02E_VAL_POWERMODE_NORMAL;
-    uint8_t meas_mode = BARO_2SMPB02E_VAL_MEASMODE_ULTRAHIGH;
-    
-    if(power_mode == BARO_2SMPB02E_VAL_POWERMODE_NORMAL)
-    {
+    uint8_t meas_mode = BARO_2SMPB02E_VAL_MEASMODE_ULTRAHIGH;    
+    if(power_mode == BARO_2SMPB02E_VAL_POWERMODE_NORMAL){
       baro_2smpb02e_trigger_measurement(power_mode, meas_mode);
     }
-
     while(1){
-      if(power_mode == BARO_2SMPB02E_VAL_POWERMODE_FORCED)
-      {
+      if(power_mode == BARO_2SMPB02E_VAL_POWERMODE_FORCED){
         baro_2smpb02e_trigger_measurement(power_mode, meas_mode);
       }
       blink = !blink;
