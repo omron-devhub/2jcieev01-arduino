@@ -138,13 +138,6 @@ bool baro_2smpb02e_setup(void) {
             BARO_2SMPB02E_COEFF_A_A1, BARO_2SMPB02E_COEFF_S_A1, rbuf, 20);
     baro_2smpb02e_setting._A2 = baro_2smpb02e_conv16_dbl(
             BARO_2SMPB02E_COEFF_A_A2, BARO_2SMPB02E_COEFF_S_A2, rbuf, 22);
-
-    // then, start to measurements.
-    //result = baro_2smpb02e_trigger_measurement(
-    //        BARO_2SMPB02E_VAL_MEASMODE_ULTRAHIGH);
-    //if (result) {
-    //    baro_halt("failed to wake up 2SMPB-02E sensor, halted...");
-    //}
     return false;
 }
 
@@ -209,16 +202,18 @@ int baro_2smpb02e_read(uint32_t* pres, int16_t* temp,
     bool ret;
     uint8_t rbuf[6] = {0};
     uint32_t rawtemp, rawpres;
-
+    
+    //4, 5: Read Uncompensated Temperature & Pressure value
     ret = i2c_read_reg8(
             BARO_2SMPB02E_ADDRESS, BARO_2SMPB02E_REGI2C_PRES_TXD2,
             rbuf, sizeof(rbuf));
     if (ret) {
         return 1;
     }
-
     *dp = rawpres = conv8s_s24_be(rbuf[0], rbuf[1], rbuf[2]);
     *dt = rawtemp = conv8s_s24_be(rbuf[3], rbuf[4], rbuf[5]);
+
+    //6, 7: Compensate Temperature & Pressure value
     return baro_2smpb02e_output_compensation(rawtemp, rawpres, pres, temp);
 }
 
@@ -261,15 +256,14 @@ void setup() {
     pinMode(GPIO_LED_R_PIN, OUTPUT);
     pinMode(GPIO_LED_G_PIN, OUTPUT);
     pinMode(GPIO_LED_B_PIN, OUTPUT);
-
     digitalWrite(GPIO_LED_R_PIN, LOW);
     digitalWrite(GPIO_LED_G_PIN, LOW);
     digitalWrite(GPIO_LED_B_PIN, LOW);
 
     Serial.println("peripherals: I2C");
     Wire.begin();  // master
-
     Serial.println("sensor: barometer");
+    // 1, 2 
     baro_2smpb02e_setup();
     delay(32);
 }
@@ -284,6 +278,7 @@ void loop() {
     uint32_t pres, dp, dt;
     int16_t temp;
 
+    // 3. Set Averaging times and Power mode
     uint8_t power_mode = BARO_2SMPB02E_VAL_POWERMODE_NORMAL;
     uint8_t meas_mode = BARO_2SMPB02E_VAL_MEASMODE_ULTRAHIGH;
     
@@ -302,7 +297,8 @@ void loop() {
       digitalWrite(GPIO_LED_G_PIN, blink ? HIGH: LOW);
       digitalWrite(GPIO_LED_B_PIN, blink ? HIGH: LOW);
       delay(900);
-      
+
+      // 4, 5, 6, 7
       baro_2smpb02e_read(&pres, &temp, &dp, &dt);
       Serial.print(pres / 10.0);
       Serial.print(" [Pa], ");
