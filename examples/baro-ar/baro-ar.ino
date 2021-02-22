@@ -96,7 +96,7 @@ bool baro_2smpb02e_setup(void) {
         baro_halt("cannot find 2SMPB-02E sensor, halted...");
     } 
         
-    rbuf[0] = BARO_2SMPB02E_VAL_IOSETUP_STANDBY_0125MS; 
+    rbuf[0] = BARO_2SMPB02E_VAL_IOSETUP_STANDBY_0050MS; 
     i2c_write_reg8(BARO_2SMPB02E_ADDRESS, BARO_2SMPB02E_REGI2C_IO_SETUP,
                    rbuf, sizeof(rbuf));
     
@@ -268,7 +268,7 @@ void setup() {
 /** <!-- loop - barometer sensor {{{1 -->
  * 1. blink LEDs
  * 2. read and convert sensor.
- * 3. output results, format is: x10[Pa], x100[degC],digit,digit
+ * 3. output results, format is: [Pa], [degC],digit,digit
  */
 void loop() {
     static bool blink = false;
