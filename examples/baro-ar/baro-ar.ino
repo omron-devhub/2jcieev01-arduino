@@ -89,14 +89,22 @@ bool baro_2smpb02e_setup(void) {
     uint8_t rbuf[32] = {0};
     uint8_t ex;
 
-    // 1.
+    // 1. Check Chip ID, Set Standby time, Set IIR filter
     result = i2c_read_reg8(BARO_2SMPB02E_ADDRESS,
                            BARO_2SMPB02E_REGI2C_CHIP_ID, rbuf, 1);
     if (result || rbuf[0] != BARO_2SMPB02E_CHIP_ID) {
         baro_halt("cannot find 2SMPB-02E sensor, halted...");
     }
+ 
+    rbuf[0] = BARO_2SMPB02E_VAL_IOSETUP_STANDBY_0125MS; 
+    i2c_write_reg8(BARO_2SMPB02E_ADDRESS, BARO_2SMPB02E_REGI2C_IO_SETUP,
+                   rbuf, sizeof(rbuf));
 
-    // 2.
+    rbuf[0] = BARO_2SMPB02E_VAL_IIR_32TIMES;
+    i2c_write_reg8(BARO_2SMPB02E_ADDRESS, BARO_2SMPB02E_REGI2C_IIR,
+                   rbuf, sizeof(rbuf));
+                   
+    // 2. Read Compensation coefficients
     result = i2c_read_reg8(BARO_2SMPB02E_ADDRESS,
             BARO_2SMPB02E_REGI2C_COEFS, rbuf, 25);
     if (result) {
@@ -131,21 +139,12 @@ bool baro_2smpb02e_setup(void) {
     baro_2smpb02e_setting._A2 = baro_2smpb02e_conv16_dbl(
             BARO_2SMPB02E_COEFF_A_A2, BARO_2SMPB02E_COEFF_S_A2, rbuf, 22);
 
-    // 3. setup a sensor at 125msec sampling and 32-IIR filter.
-    rbuf[0] = BARO_2SMPB02E_VAL_IOSETUP_STANDBY_0125MS;
-    i2c_write_reg8(BARO_2SMPB02E_ADDRESS, BARO_2SMPB02E_REGI2C_IO_SETUP,
-                   rbuf, sizeof(rbuf));
-
-    rbuf[0] = BARO_2SMPB02E_VAL_IIR_32TIMES;
-    i2c_write_reg8(BARO_2SMPB02E_ADDRESS, BARO_2SMPB02E_REGI2C_IIR,
-                   rbuf, sizeof(rbuf));
-
     // then, start to measurements.
-    result = baro_2smpb02e_trigger_measurement(
-            BARO_2SMPB02E_VAL_MEASMODE_ULTRAHIGH);
-    if (result) {
-        baro_halt("failed to wake up 2SMPB-02E sensor, halted...");
-    }
+    //result = baro_2smpb02e_trigger_measurement(
+    //        BARO_2SMPB02E_VAL_MEASMODE_ULTRAHIGH);
+    //if (result) {
+    //    baro_halt("failed to wake up 2SMPB-02E sensor, halted...");
+    //}
     return false;
 }
 
@@ -195,10 +194,8 @@ static double baro_2smpb02e_conv20q4_dbl(uint8_t* buf,
 
 /** <!-- baro_2smpb02e_trigger_measurement {{{1 --> start the sensor
  */
-static bool baro_2smpb02e_trigger_measurement(uint8_t mode) {
-    uint8_t wbuf[1] = {
-        (uint8_t)(mode | BARO_2SMPB02E_VAL_POWERMODE_NORMAL)};
-
+static bool baro_2smpb02e_trigger_measurement(uint8_t powermode, uint8_t measmode) {
+    uint8_t wbuf[1] = {(uint8_t)(measmode | powermode)};
     i2c_write_reg8(BARO_2SMPB02E_ADDRESS, BARO_2SMPB02E_REGI2C_CTRL_MEAS,
                    wbuf, sizeof(wbuf));
     return false;
@@ -287,21 +284,33 @@ void loop() {
     uint32_t pres, dp, dt;
     int16_t temp;
 
-    blink = !blink;
-    digitalWrite(GPIO_LED_R_PIN, blink ? HIGH: LOW);
-    digitalWrite(GPIO_LED_G_PIN, blink ? HIGH: LOW);
-    digitalWrite(GPIO_LED_B_PIN, blink ? HIGH: LOW);
-    delay(900);
-    int ret = baro_2smpb02e_read(&pres, &temp, &dp, &dt);
-    Serial.print("sensor output:");
-    Serial.print(pres / 10.0);
-    Serial.print("[Pa], ");
-    Serial.print(temp / 100.0);
-    Serial.print("[degC], ");
-    Serial.print(dp);
-    Serial.print("[],");
-    Serial.print(dt);
-    Serial.print("[], retun code:");
-    Serial.println(ret);
+    uint8_t power_mode = BARO_2SMPB02E_VAL_POWERMODE_NORMAL;
+    uint8_t meas_mode = BARO_2SMPB02E_VAL_MEASMODE_ULTRAHIGH;
+    
+    if(power_mode == BARO_2SMPB02E_VAL_POWERMODE_NORMAL)
+    {
+      baro_2smpb02e_trigger_measurement(power_mode, meas_mode);
+    }
+
+    while(1){
+      if(power_mode == BARO_2SMPB02E_VAL_POWERMODE_FORCED)
+      {
+        baro_2smpb02e_trigger_measurement(power_mode, meas_mode);
+      }
+      blink = !blink;
+      digitalWrite(GPIO_LED_R_PIN, blink ? HIGH: LOW);
+      digitalWrite(GPIO_LED_G_PIN, blink ? HIGH: LOW);
+      digitalWrite(GPIO_LED_B_PIN, blink ? HIGH: LOW);
+      delay(900);
+      
+      baro_2smpb02e_read(&pres, &temp, &dp, &dt);
+      Serial.print(pres / 10.0);
+      Serial.print(" [Pa], ");
+      Serial.print(temp / 100.0);
+      Serial.print(" [degC], ");
+      Serial.print(dp);
+      Serial.print(" ,");
+      Serial.println(dt);
+    }
 }
 // vi: ft=arduino:fdm=marker:et:sw=4:tw=80
